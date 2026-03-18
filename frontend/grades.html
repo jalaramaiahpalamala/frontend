@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grades - Student Management System</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <h2>SMS</h2>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+        <li><a href="students.html" class="nav-link">Students</a></li>
+        <li><a href="courses.html" class="nav-link">Courses</a></li>
+        <li><a href="grades.html" class="nav-link active">Grades</a></li>
+        <li><a href="attendance.html" class="nav-link">Attendance</a></li>
+        <li><a href="reports.html" class="nav-link">Reports</a></li>
+      </ul>
+      <div class="sidebar-footer">
+        <button id="logoutBtn" class="btn-secondary">Logout</button>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <h1>Grades Management</h1>
+        </div>
+        <div class="top-bar-right">
+          <button id="addGradeBtn" class="btn-primary">+ Record Grades</button>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <div id="gradeForm" class="modal" style="display: none;">
+          <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="formTitle">Record Grade</h2>
+            <form id="gradeFormElement">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="studentSelect">Student</label>
+                  <select id="studentSelect" name="student_id" required>
+                    <option value="">Select a student</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="courseSelect">Course</label>
+                  <select id="courseSelect" name="course_id" required>
+                    <option value="">Select a course</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="assignment1">Assignment 1 (0-100)</label>
+                  <input type="number" id="assignment1" name="assignment1" min="0" max="100">
+                </div>
+                <div class="form-group">
+                  <label for="assignment2">Assignment 2 (0-100)</label>
+                  <input type="number" id="assignment2" name="assignment2" min="0" max="100">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="midterm">Midterm (0-100)</label>
+                  <input type="number" id="midterm" name="midterm" min="0" max="100">
+                </div>
+                <div class="form-group">
+                  <label for="final">Final Exam (0-100)</label>
+                  <input type="number" id="final" name="final_exam" min="0" max="100">
+                </div>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">Save Grades</button>
+                <button type="button" class="btn-secondary cancel-btn">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="container">
+          <div class="filter-bar">
+            <select id="studentFilter" class="search-input">
+              <option value="">All Students</option>
+            </select>
+            <select id="courseFilter" class="search-input">
+              <option value="">All Courses</option>
+            </select>
+          </div>
+          <table id="gradesTable" class="data-table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Course</th>
+                <th>A1</th>
+                <th>A2</th>
+                <th>Midterm</th>
+                <th>Final</th>
+                <th>GPA</th>
+                <th>Grade</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="gradesList">
+              <tr><td colspan="9">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let allGrades = [];
+    let students = [];
+    let courses = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuth();
+      loadStudents();
+      loadCourses();
+      loadGrades();
+      setupFormHandlers();
+    });
+
+    async function loadStudents() {
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch('/api/students', { headers: { 'Authorization': `Bearer ${token}` } });
+        students = await res.json();
+        populateDropdowns();
+      } catch (error) {
+        console.error('Error loading students:', error);
+      }
+    }
+
+    async function loadCourses() {
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch('/api/courses', { headers: { 'Authorization': `Bearer ${token}` } });
+        courses = await res.json();
+        populateDropdowns();
+      } catch (error) {
+        console.error('Error loading courses:', error);
+      }
+    }
+
+    function populateDropdowns() {
+      const studentSelect = document.getElementById('studentSelect');
+      const courseSelect = document.getElementById('courseSelect');
+      const studentFilter = document.getElementById('studentFilter');
+      const courseFilter = document.getElementById('courseFilter');
+
+      studentSelect.innerHTML = '<option value="">Select a student</option>' +
+        students.map(s => `<option value="${s.id}">${s.first_name} ${s.last_name}</option>`).join('');
+
+      courseSelect.innerHTML = '<option value="">Select a course</option>' +
+        courses.map(c => `<option value="${c.id}">${c.course_code} - ${c.course_name}</option>`).join('');
+
+      studentFilter.innerHTML = '<option value="">All Students</option>' +
+        students.map(s => `<option value="${s.id}">${s.first_name} ${s.last_name}</option>`).join('');
+
+      courseFilter.innerHTML = '<option value="">All Courses</option>' +
+        courses.map(c => `<option value="${c.id}">${c.course_code} - ${c.course_name}</option>`).join('');
+    }
+
+    async function loadGrades() {
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch('/api/grades', { headers: { 'Authorization': `Bearer ${token}` } });
+        allGrades = await res.json();
+        renderGrades(allGrades);
+      } catch (error) {
+        console.error('Error loading grades:', error);
+        document.getElementById('gradesList').innerHTML = '<tr><td colspan="9">Error loading grades</td></tr>';
+      }
+    }
+
+    function renderGrades(grades) {
+      const tbody = document.getElementById('gradesList');
+      tbody.innerHTML = grades.map(g => `
+        <tr>
+          <td>${g.first_name} ${g.last_name}</td>
+          <td>${g.course_name}</td>
+          <td>${g.assignment1 || '-'}</td>
+          <td>${g.assignment2 || '-'}</td>
+          <td>${g.midterm || '-'}</td>
+          <td>${g.final_exam || '-'}</td>
+          <td>${(g.gpa || 0).toFixed(2)}</td>
+          <td><span class="badge grade-${g.grade || 'F'}">${g.grade || 'N/A'}</span></td>
+          <td>
+            <button onclick="editGrade(${g.id})" class="btn-small">Edit</button>
+            <button onclick="deleteGrade(${g.id})" class="btn-small btn-danger">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function setupFormHandlers() {
+      const modal = document.getElementById('gradeForm');
+      const addBtn = document.getElementById('addGradeBtn');
+      const closeBtn = document.querySelector('.close');
+      const cancelBtn = document.querySelector('.cancel-btn');
+      const form = document.getElementById('gradeFormElement');
+
+      addBtn.addEventListener('click', () => {
+        document.getElementById('formTitle').textContent = 'Record Grade';
+        form.reset();
+        form.dataset.gradeId = '';
+        modal.style.display = 'block';
+      });
+
+      closeBtn.addEventListener('click', () => modal.style.display = 'none');
+      cancelBtn.addEventListener('click', () => modal.style.display = 'none');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem('token');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData);
+        const gradeId = form.dataset.gradeId;
+
+        try {
+          const method = gradeId ? 'PUT' : 'POST';
+          const url = gradeId ? `/api/grades/${gradeId}` : '/api/grades';
+          const res = await fetch(url, {
+            method,
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+
+          if (!res.ok) throw new Error('Failed to save grades');
+          modal.style.display = 'none';
+          loadGrades();
+        } catch (error) {
+          alert('Error: ' + error.message);
+        }
+      });
+    }
+
+    async function editGrade(id) {
+      const grade = allGrades.find(g => g.id === id);
+      if (!grade) return;
+
+      document.getElementById('formTitle').textContent = 'Edit Grade';
+      document.getElementById('studentSelect').value = grade.student_id;
+      document.getElementById('courseSelect').value = grade.course_id;
+      document.getElementById('assignment1').value = grade.assignment1 || '';
+      document.getElementById('assignment2').value = grade.assignment2 || '';
+      document.getElementById('midterm').value = grade.midterm || '';
+      document.getElementById('final').value = grade.final_exam || '';
+
+      document.getElementById('gradeFormElement').dataset.gradeId = id;
+      document.getElementById('gradeForm').style.display = 'block';
+    }
+
+    async function deleteGrade(id) {
+      if (!confirm('Are you sure you want to delete this grade record?')) return;
+
+      const token = localStorage.getItem('token');
+      try {
+        const res = await fetch(`/api/grades/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error('Failed to delete grade');
+        loadGrades();
+      } catch (error) {
+        alert('Error: ' + error.message);
+      }
+    }
+
+    document.getElementById('studentFilter').addEventListener('change', () => filterGrades());
+    document.getElementById('courseFilter').addEventListener('change', () => filterGrades());
+
+    function filterGrades() {
+      const studentId = document.getElementById('studentFilter').value;
+      const courseId = document.getElementById('courseFilter').value;
+
+      let filtered = allGrades;
+      if (studentId) filtered = filtered.filter(g => g.student_id == studentId);
+      if (courseId) filtered = filtered.filter(g => g.course_id == courseId);
+
+      renderGrades(filtered);
+    }
+  </script>
+</body>
+</html>
